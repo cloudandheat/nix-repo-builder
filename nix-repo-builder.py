@@ -2,11 +2,18 @@
 
 import os
 import pathlib
+import signal
 import subprocess
 import sys
 import tempfile
 
 import pygit2
+
+
+def signal_handler(sig, frame):
+    print("Aborting.")
+    exit(1)
+
 
 STATE_DIR = os.environ.get("STATE_DIR", None)
 REPO_URL = os.environ["REPO_URL"]
@@ -21,7 +28,6 @@ errors = 0
 
 def build_and_push(ref: pygit2.Reference):
     print(f"INFO: Building packages for {ref.name}...")
-    no = subprocess.Popen(["yes", "n"], stdout=subprocess.PIPE)
     try:
         out_path = subprocess.check_output(
             [
@@ -32,7 +38,7 @@ def build_and_push(ref: pygit2.Reference):
                 "--no-link",
                 f"{GIT_DIR}?ref={ref.target}#{TARGET_PACKAGE}",
             ],
-            stdin=no.stdout,
+            stdin=subprocess.PIPE,
         )
     except subprocess.CalledProcessError:
         print(f"WARNING: Build failed. {ref.target} will not be retried for {ref.name}")
@@ -43,7 +49,15 @@ def build_and_push(ref: pygit2.Reference):
     print(f"INFO: Signing packages for {ref.name}...")
     try:
         subprocess.check_call(
-            ["nix", "store", "sign", out_path, "--key-file", NIX_CACHE_PRIVATE_KEY_FILE]
+            [
+                "nix",
+                "store",
+                "sign",
+                out_path,
+                "--key-file",
+                NIX_CACHE_PRIVATE_KEY_FILE,
+            ],
+            stdin=subprocess.PIPE,
         )
     except subprocess.CalledProcessError:
         print(f"WARNING: Failed to sign packages for {ref.name}")
@@ -58,7 +72,8 @@ def build_and_push(ref: pygit2.Reference):
                 out_path,
                 "--to",
                 NIX_CACHE_UPLOAD_URI,
-            ]
+            ],
+            stdin=subprocess.PIPE,
         )
     except subprocess.CalledProcessError:
         print(f"WARNING: Failed to upload packages for {ref.name}")
@@ -91,6 +106,8 @@ def stateful_build_and_push(ref: pygit2.Reference):
 
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
+
     with tempfile.TemporaryDirectory() as GIT_DIR:
         print(f"INFO: Cloning {REPO_URL} to {GIT_DIR}")
         repo = pygit2.clone_repository(REPO_URL, GIT_DIR)
