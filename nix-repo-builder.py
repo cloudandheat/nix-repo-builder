@@ -94,7 +94,7 @@ def stateful_build_and_push(ref: pygit2.Reference):
 
     try:
         build_and_push(ref)
-    except:
+    except subprocess.CalledProcessError:
         print(f"{ref.name} will be retried")
         global errors
         errors += 1
