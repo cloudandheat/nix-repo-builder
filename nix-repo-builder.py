@@ -19,8 +19,8 @@ STATE_DIR = os.environ.get("STATE_DIR", None)
 REPO_URL = os.environ["REPO_URL"]
 TARGET_PACKAGE = os.environ["TARGET_PACKAGE"]
 
-NIX_CACHE_PRIVATE_KEY_FILE = os.environ["NIX_CACHE_PRIVATE_KEY_FILE"]
-NIX_CACHE_UPLOAD_URI = os.environ["NIX_CACHE_UPLOAD_URI"]
+NIX_CACHE_PRIVATE_KEY_FILE = os.environ.get("NIX_CACHE_PRIVATE_KEY_FILE", None)
+NIX_CACHE_UPLOAD_URI = os.environ.get("NIX_CACHE_UPLOAD_URI", None)
 
 
 errors = 0
@@ -46,38 +46,44 @@ def build_and_push(ref: pygit2.Reference):
 
     out_path = out_path.strip()
 
-    print(f"INFO: Signing packages for {ref.name}...")
-    try:
-        subprocess.check_call(
-            [
-                "nix",
-                "store",
-                "sign",
-                out_path,
-                "--key-file",
-                NIX_CACHE_PRIVATE_KEY_FILE,
-            ],
-            stdin=subprocess.PIPE,
-        )
-    except subprocess.CalledProcessError:
-        print(f"WARNING: Failed to sign packages for {ref.name}")
-        raise
+    if NIX_CACHE_PRIVATE_KEY_FILE:
+        print(f"INFO: Signing packages for {ref.name}...")
+        try:
+            subprocess.check_call(
+                [
+                    "nix",
+                    "store",
+                    "sign",
+                    out_path,
+                    "--key-file",
+                    NIX_CACHE_PRIVATE_KEY_FILE,
+                ],
+                stdin=subprocess.PIPE,
+            )
+        except subprocess.CalledProcessError:
+            print(f"WARNING: Failed to sign packages for {ref.name}")
+            raise
+    else:
+        print(f"INFO: Skipping signing for {ref.name} because NIX_CACHE_PRIVATE_KEY_FILE is not provided.")
 
-    print(f"INFO: Uploading packages for {ref.name}...")
-    try:
-        subprocess.check_call(
-            [
-                "nix",
-                "copy",
-                out_path,
-                "--to",
-                NIX_CACHE_UPLOAD_URI,
-            ],
-            stdin=subprocess.PIPE,
-        )
-    except subprocess.CalledProcessError:
-        print(f"WARNING: Failed to upload packages for {ref.name}")
-        raise
+    if NIX_CACHE_UPLOAD_URI:
+        print(f"INFO: Uploading packages for {ref.name}...")
+        try:
+            subprocess.check_call(
+                [
+                    "nix",
+                    "copy",
+                    out_path,
+                    "--to",
+                    NIX_CACHE_UPLOAD_URI,
+                ],
+                stdin=subprocess.PIPE,
+            )
+        except subprocess.CalledProcessError:
+            print(f"WARNING: Failed to upload packages for {ref.name}")
+            raise
+    else:
+        print(f"INFO: Skipping upload for {ref.name} because NIX_CACHE_UPLOAD_URI is not provided")
 
 
 def stateful_build_and_push(ref: pygit2.Reference):
