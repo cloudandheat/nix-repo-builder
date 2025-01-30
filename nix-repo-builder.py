@@ -28,10 +28,17 @@ except KeyError:
     logger.error("REPO_URL not set")
     exit(1)
 
+TARGET_PACKAGES = os.environ.get("TARGET_PACKAGES", "").split()
+
 try:
     TARGET_PACKAGE = os.environ["TARGET_PACKAGE"]
 except KeyError:
-    logger.error("TARGET_PACKAGE not set")
+    pass
+else:
+    TARGET_PACKAGES.append(TARGET_PACKAGE)
+
+if len(TARGET_PACKAGES) == 0:
+    logger.error("TARGET_PACKAGES not set")
     exit(1)
 
 
@@ -40,7 +47,11 @@ def signal_handler(sig, frame):
     exit(1)
     
 def build_and_push(ref: pygit2.Reference):
-    logger.info(f"Building packages for {ref.name}...")
+    for package in TARGET_PACKAGES:
+        build_and_push_package(ref, package)
+
+def build_and_push_package(ref: pygit2.Reference, package):
+    logger.info(f"Building {package} for {ref.name}...")
     try:
         out_path = subprocess.check_output(
             [
@@ -49,7 +60,7 @@ def build_and_push(ref: pygit2.Reference):
                 "--no-use-registries",
                 "--print-out-paths",
                 "--no-link",
-                f"{GIT_DIR}?ref={ref.target}#{TARGET_PACKAGE}",
+                f"{GIT_DIR}?ref={ref.target}#{package}",
             ],
             stdin=subprocess.PIPE,
         )
