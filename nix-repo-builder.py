@@ -6,28 +6,41 @@ import signal
 import subprocess
 import sys
 import tempfile
-
 import pygit2
+import logging
+
+errors = 0
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+STATE_DIR = os.environ.get("STATE_DIR", None)
+NIX_CACHE_PRIVATE_KEY_FILE = os.environ.get("NIX_CACHE_PRIVATE_KEY_FILE", None)
+NIX_CACHE_UPLOAD_URI = os.environ.get("NIX_CACHE_UPLOAD_URI", None)
+
+try:
+    REPO_URL = os.environ["REPO_URL"]
+except KeyError:
+    logger.error("REPO_URL not set")
+    exit(1)
+
+try:
+    TARGET_PACKAGE = os.environ["TARGET_PACKAGE"]
+except KeyError:
+    logger.error("TARGET_PACKAGE not set")
+    exit(1)
 
 
 def signal_handler(sig, frame):
     print("Aborting.")
     exit(1)
-
-
-STATE_DIR = os.environ.get("STATE_DIR", None)
-REPO_URL = os.environ["REPO_URL"]
-TARGET_PACKAGE = os.environ["TARGET_PACKAGE"]
-
-NIX_CACHE_PRIVATE_KEY_FILE = os.environ.get("NIX_CACHE_PRIVATE_KEY_FILE", None)
-NIX_CACHE_UPLOAD_URI = os.environ.get("NIX_CACHE_UPLOAD_URI", None)
-
-
-errors = 0
-
-
+    
 def build_and_push(ref: pygit2.Reference):
-    print(f"INFO: Building packages for {ref.name}...")
+    logger.info(f"Building packages for {ref.name}...")
     try:
         out_path = subprocess.check_output(
             [
@@ -41,13 +54,13 @@ def build_and_push(ref: pygit2.Reference):
             stdin=subprocess.PIPE,
         )
     except subprocess.CalledProcessError:
-        print(f"WARNING: Build failed. {ref.target} will not be retried for {ref.name}")
+        logger.warning(f"Build failed. {ref.target} will not be retried for {ref.name}")
         return
 
     out_path = out_path.strip()
 
     if NIX_CACHE_PRIVATE_KEY_FILE:
-        print(f"INFO: Signing packages for {ref.name}...")
+        logger.info(f"Signing packages for {ref.name}...")
         try:
             subprocess.check_call(
                 [
@@ -61,13 +74,13 @@ def build_and_push(ref: pygit2.Reference):
                 stdin=subprocess.PIPE,
             )
         except subprocess.CalledProcessError:
-            print(f"WARNING: Failed to sign packages for {ref.name}")
+            logger.warning(f"Failed to sign packages for {ref.name}")
             raise
     else:
-        print(f"INFO: Skipping signing for {ref.name} because NIX_CACHE_PRIVATE_KEY_FILE is not provided.")
+        logger.info(f"Skipping signing for {ref.name} because NIX_CACHE_PRIVATE_KEY_FILE is not provided.")
 
     if NIX_CACHE_UPLOAD_URI:
-        print(f"INFO: Uploading packages for {ref.name}...")
+        logger.info(f"Uploading packages for {ref.name}...")
         try:
             subprocess.check_call(
                 [
@@ -80,10 +93,10 @@ def build_and_push(ref: pygit2.Reference):
                 stdin=subprocess.PIPE,
             )
         except subprocess.CalledProcessError:
-            print(f"WARNING: Failed to upload packages for {ref.name}")
+            logger.warning(f"Failed to upload packages for {ref.name}")
             raise
     else:
-        print(f"INFO: Skipping upload for {ref.name} because NIX_CACHE_UPLOAD_URI is not provided")
+        logger.info(f"Skipping upload for {ref.name} because NIX_CACHE_UPLOAD_URI is not provided")
 
 
 def stateful_build_and_push(ref: pygit2.Reference):
@@ -115,7 +128,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
     with tempfile.TemporaryDirectory() as GIT_DIR:
-        print(f"INFO: Cloning {REPO_URL} to {GIT_DIR}")
+        logger.info(f"Cloning {REPO_URL} to {GIT_DIR}")
         repo = pygit2.clone_repository(REPO_URL, GIT_DIR)
 
         for ref in (r.resolve() for r in repo.references.iterator()):
@@ -127,5 +140,5 @@ if __name__ == "__main__":
             else:
                 stateful_build_and_push(ref)
 
-    print(f"Encountered {errors} errors")
+    logger.info(f"Encountered {errors} errors")
     exit(errors != 0)
