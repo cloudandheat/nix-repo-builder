@@ -55,6 +55,8 @@ if __name__ == "__main__":
     bucket = s3_resource.Bucket(NIX_CACHE_S3_BUCKET_NAME)
     dropped = 0
     for i, obj in enumerate(bucket.objects.all(), start=1):
+        if obj.key == "nix-cache-info":
+            continue
         try:
             if obj.last_modified < cutoff:
                 delete_object(obj, f"Expired. Last modified {obj.last_modified}")
