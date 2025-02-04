@@ -50,21 +50,24 @@ if __name__ == "__main__":
 
     s3_resource = boto3.resource('s3')
     bucket = s3_resource.Bucket(NIX_CACHE_S3_BUCKET_NAME)
+    dropped = 0
     for i, obj in enumerate(bucket.objects.all(), start=1):
         try:
             if obj.last_modified < cutoff:
                 delete_object(obj, reason=f"Older than retention time. Last modified {obj.last_modified}")
+                dropped += 1
             elif is_narinfo(obj) and NIX_CACHE_PUBLIC_KEY_NAMES:
                 narinfo = get_narinfo(obj)
                 key_names = [sig.split(":")[0] for sig in narinfo.Sig]
                 if not (set(NIX_CACHE_PUBLIC_KEY_NAMES) & set(key_names)):
                     delete_object(obj, reason=f"No accepted key. Keys: {key_names}")
+                    dropped += 1
         except botocore.exceptions.ClientError:
             logger.warning(f"Could not access {obj.key}. Skipping.")
     
         if i % 100 == 0:
-            logger.info(f"Handled {i} objects")
+            logger.info(f"Dropped {dropped}/{i} objects")
     else:
         logger.info("Done.")
-        logger.info(f"Handled {i} objects")
+        logger.info(f"Dropped {dropped}/{i} objects")
         
