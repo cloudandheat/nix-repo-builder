@@ -21,18 +21,21 @@ logger.addHandler(handler)
 NIX_CACHE_PUBLIC_KEY_NAMES = os.environ.get("NIX_CACHE_PUBLIC_KEY_NAMES", "").split()
 NIX_CACHE_S3_BUCKET_NAME = os.environ["NIX_CACHE_S3_BUCKET_NAME"]
 NIX_CACHE_RETENTION_DAYS = os.environ["NIX_CACHE_RETENTION_DAYS"]
+DRY_RUN = os.environ.get("DRY_RUN", "false") == "true"
 
 
 def delete_object(obj, reason):
     if is_narinfo(obj):
         narinfo = get_narinfo(obj)
-        obj.Bucket().Object(narinfo.URL).delete()
+        if not DRY_RUN:
+            obj.Bucket().Object(narinfo.URL).delete()
         description = f"Store path: {narinfo.StorePath}"
     else:
         description = f"Narhash: {obj.key}"
 
-    logger.info(f"Dropping object. Reason: {reason}. {description}")
-    obj.delete()
+    logger.info(f"{'DRY RUN: ' if DRY_RUN else ""}Dropping object. Reason: {reason}. {description}")
+    if not DRY_RUN:
+        obj.delete()
 
 
 def get_narinfo(obj) -> nartool.store.NarInfo:
