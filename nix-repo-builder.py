@@ -15,7 +15,7 @@ errors = 0
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -47,10 +47,12 @@ if len(TARGET_PACKAGES) == 0:
 def signal_handler(sig, frame):
     print("Aborting.")
     exit(1)
-    
+
+
 def build_and_push(ref: pygit2.Reference):
     for package in TARGET_PACKAGES:
         build_and_push_package(ref, package)
+
 
 def build_and_push_package(ref: pygit2.Reference, package):
     logger.info(f"Building {package} for {ref.name}...")
@@ -97,7 +99,9 @@ def build_and_push_package(ref: pygit2.Reference, package):
             logger.warning(f"Failed to sign packages for {ref.name}")
             raise
     else:
-        logger.info(f"Skipping signing for {ref.name} because NIX_CACHE_PRIVATE_KEY_FILE is not provided.")
+        logger.info(
+            f"Skipping signing for {ref.name} because NIX_CACHE_PRIVATE_KEY_FILE is not provided."
+        )
 
     if NIX_CACHE_UPLOAD_URI:
         logger.info(f"Uploading packages for {ref.name}...")
@@ -116,7 +120,9 @@ def build_and_push_package(ref: pygit2.Reference, package):
             logger.warning(f"Failed to upload packages for {ref.name}")
             raise
     else:
-        logger.info(f"Skipping upload for {ref.name} because NIX_CACHE_UPLOAD_URI is not provided")
+        logger.info(
+            f"Skipping upload for {ref.name} because NIX_CACHE_UPLOAD_URI is not provided"
+        )
 
 
 def stateful_build_and_push(ref: pygit2.Reference):
@@ -154,7 +160,7 @@ if __name__ == "__main__":
         refs = (
             r.resolve()
             for r in repo.references.iterator()
-            if (REF_REGEX and re.search(REF_REGEX, r.name))
+            if (not REF_REGEX or re.search(REF_REGEX, r.name))
         )
         for ref in refs:
             if STATE_DIR == None:
