@@ -22,9 +22,11 @@ NIX_CACHE_PUBLIC_KEY_NAMES = os.environ.get("NIX_CACHE_PUBLIC_KEY_NAMES", "").sp
 NIX_CACHE_S3_BUCKET_NAME = os.environ["NIX_CACHE_S3_BUCKET_NAME"]
 NIX_CACHE_RETENTION_DAYS = os.environ["NIX_CACHE_RETENTION_DAYS"]
 
-def delete_object(obj):
+def delete_object(obj, reason=None):
+    logger.info(f"Dropping {obj.key}. Reason: {reason}")
     if is_narinfo(obj):
         narinfo = get_narinfo(obj)
+        logger.info(f"Dropping {narinfo.StorePath}. Reason: Part of {obj.key}")
         obj.Bucket().Object(narinfo.URL).delete()
     obj.delete()
 
@@ -51,16 +53,12 @@ if __name__ == "__main__":
     for i, obj in enumerate(bucket.objects.all(), start=1):
         try:
             if obj.last_modified < cutoff:
-                description = get_narinfo(obj).StorePath if is_narinfo(obj) else obj.key
-                logger.info(f"Dropping {description}. Reason: Older than retention time. Last modified {obj.last_modified}")
-                delete_object(obj)
-            
+                delete_object(obj, reason=f"Older than retention time. Last modified {obj.last_modified}")
             elif is_narinfo(obj) and NIX_CACHE_PUBLIC_KEY_NAMES:
                 narinfo = get_narinfo(obj)
                 key_names = [sig.split(":")[0] for sig in narinfo.Sig]
                 if not (set(NIX_CACHE_PUBLIC_KEY_NAMES) & set(key_names)):
-                    logger.info(f"Dropping {narinfo.StorePath}. Reason: No accepted key. Keys: {key_names})")
-                    delete_object(obj)
+                    delete_object(obj, reason=f"No accepted key. Keys: {key_names}")
         except botocore.exceptions.ClientError:
             logger.warning(f"Could not access {obj.key}. Skipping.")
     
