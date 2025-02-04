@@ -72,6 +72,10 @@ if __name__ == "__main__":
         if i % 100 == 0:
             logger.info(f"Dropped {dropped}/{i} objects")
     else:
-        logger.info("Done.")
-        logger.info(f"Dropped {dropped}/{i} objects")
+        try:
+            logger.info(f"Dropped {dropped}/{i} objects")
+            logger.info("Done.")
+        except NameError:
+            logger.info(f"Binary cache is empty, nothing to do.")
+
         
