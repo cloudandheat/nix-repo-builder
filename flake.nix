@@ -1,6 +1,8 @@
 {
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
+  inputs.nartool.url = "github:markuskowa/nartool";
+  inputs.nartool.inputs.nixpkgs.follows = "nixpkgs";
 
   outputs = inputs @ {
     self,
@@ -20,6 +22,21 @@
           (ps:
             with ps; [
               pygit2
+              boto3
+              boto3-stubs
+              ipython
+              (
+                buildPythonPackage rec {
+                  name = "nartool";
+                  version = "0.0.2";
+
+                  format = "pyproject";
+
+                  src = inputs.nartool;
+                  nativeBuildInputs = [setuptools];
+                  propagatedBuildInputs = [requests];
+                }
+              )
             ]);
       in {
         packages = rec {
@@ -31,6 +48,15 @@
             ];
             text = ''
               ${./.}/nix-repo-builder.py
+            '';
+          };
+          nix-s3-garbage-collector = pkgs.writeShellApplication {
+            name = "nix-s3-garbage-collector";
+            runtimeInputs = [
+              python
+            ];
+            text = ''
+              ${./.}/nix-s3-garbage-collector.py
             '';
           };
         };

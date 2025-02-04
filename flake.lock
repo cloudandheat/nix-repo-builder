@@ -18,6 +18,26 @@
         "type": "github"
       }
     },
+    "nartool": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1708606447,
+        "narHash": "sha256-LroW9SkqEHumuWtoO2JsYcOIJ8Ib0fHcuh6BgdTDGUw=",
+        "owner": "markuskowa",
+        "repo": "nartool",
+        "rev": "047b84330a85cb35096c83bf51cb9aa00fa5622b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "markuskowa",
+        "repo": "nartool",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1737525964,
@@ -49,6 +69,7 @@
     "root": {
       "inputs": {
         "flake-parts": "flake-parts",
+        "nartool": "nartool",
         "nixpkgs": "nixpkgs"
       }
     }
