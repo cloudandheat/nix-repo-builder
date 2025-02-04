@@ -8,6 +8,7 @@ import sys
 import tempfile
 import pygit2
 import logging
+import re
 
 errors = 0
 
@@ -21,6 +22,7 @@ logger.addHandler(handler)
 STATE_DIR = os.environ.get("STATE_DIR", None)
 NIX_CACHE_PRIVATE_KEY_FILE = os.environ.get("NIX_CACHE_PRIVATE_KEY_FILE", None)
 NIX_CACHE_UPLOAD_URI = os.environ.get("NIX_CACHE_UPLOAD_URI", None)
+REF_REGEX = os.environ.get("REF_REGEX", None)
 
 try:
     REPO_URL = os.environ["REPO_URL"]
@@ -142,7 +144,12 @@ if __name__ == "__main__":
         logger.info(f"Cloning {REPO_URL} to {GIT_DIR}")
         repo = pygit2.clone_repository(REPO_URL, GIT_DIR)
 
-        for ref in (r.resolve() for r in repo.references.iterator()):
+        refs = (
+            r.resolve()
+            for r in repo.references.iterator()
+            if (REF_REGEX and re.search(REF_REGEX, r.name))
+        )
+        for ref in refs:
             if STATE_DIR == None:
                 try:
                     build_and_push(ref)

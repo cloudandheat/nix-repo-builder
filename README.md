@@ -11,5 +11,6 @@ The following variables need to be set:
 
 Optional:
 * `STATE_DIR` Where nix-repo-builder should keep track of which commits were already built. If left empty, it will build all references.
+* `REF_REGEX` A regular expression to limit which refs to build
 
 Note that in case you want to use an S3 bucket as cache, you need to set `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID`.
