@@ -51,7 +51,8 @@ if __name__ == "__main__":
     for i, obj in enumerate(bucket.objects.all(), start=1):
         try:
             if obj.last_modified < cutoff:
-                logger.info(f"Dropping {obj.key}. Reason: Older than retention time. Last modified {obj.last_modified}")
+                description = get_narinfo(obj).StorePath if is_narinfo(obj) else obj.key
+                logger.info(f"Dropping {description}. Reason: Older than retention time. Last modified {obj.last_modified}")
                 delete_object(obj)
                 continue
             
@@ -59,7 +60,7 @@ if __name__ == "__main__":
                 narinfo = get_narinfo(obj)
                 key_names = [sig.split(":")[0] for sig in narinfo.Sig]
                 if not (set(NIX_CACHE_PUBLIC_KEY_NAMES) & set(key_names)):
-                    logger.info(f"Dropping {obj.key}. Reason: No accepted key. Keys: {key_names})")
+                    logger.info(f"Dropping {narinfo.StorePath}. Reason: No accepted key. Keys: {key_names})")
                     delete_object(obj)
         except botocore.exceptions.ClientError:
             logger.warning(f"Could not access {obj.key}. Skipping.")
