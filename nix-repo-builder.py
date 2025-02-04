@@ -75,17 +75,24 @@ def build_and_push_package(ref: pygit2.Reference, package):
     if NIX_CACHE_PRIVATE_KEY_FILE:
         logger.info(f"Signing packages for {ref.name}...")
         try:
+            requisites = subprocess.Popen(
+                ["nix-store", "--query", "--requisites", out_path],
+                stdout=subprocess.PIPE,
+            )
+
             subprocess.check_call(
                 [
                     "nix",
                     "store",
                     "sign",
-                    out_path,
+                    "--stdin",
                     "--key-file",
                     NIX_CACHE_PRIVATE_KEY_FILE,
                 ],
-                stdin=subprocess.PIPE,
+                stdin=requisites.stdout,
             )
+
+            requisites.wait()
         except subprocess.CalledProcessError:
             logger.warning(f"Failed to sign packages for {ref.name}")
             raise
