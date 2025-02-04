@@ -54,9 +54,8 @@ if __name__ == "__main__":
                 description = get_narinfo(obj).StorePath if is_narinfo(obj) else obj.key
                 logger.info(f"Dropping {description}. Reason: Older than retention time. Last modified {obj.last_modified}")
                 delete_object(obj)
-                continue
             
-            if is_narinfo(obj) and NIX_CACHE_PUBLIC_KEY_NAMES:
+            elif is_narinfo(obj) and NIX_CACHE_PUBLIC_KEY_NAMES:
                 narinfo = get_narinfo(obj)
                 key_names = [sig.split(":")[0] for sig in narinfo.Sig]
                 if not (set(NIX_CACHE_PUBLIC_KEY_NAMES) & set(key_names)):
